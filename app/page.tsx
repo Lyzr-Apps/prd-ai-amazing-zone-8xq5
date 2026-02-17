@@ -34,7 +34,10 @@ const RAG_ID = '699411ac7049059138dd0e1f'
 const INDUSTRIES = ['Technology', 'Healthcare', 'Finance', 'E-commerce', 'Education', 'SaaS', 'Manufacturing', 'Retail', 'Other']
 const PRODUCT_TYPES = ['B2B', 'B2C', 'Internal Tool']
 const DETAIL_LEVELS = ['Lean', 'Standard', 'Comprehensive']
-const EMPHASIS_OPTIONS = ['KPIs & Metrics', 'Risk Analysis', 'Technical Scope', 'User Stories', 'Requirements', 'Timeline', 'Market Analysis']
+const DOCUMENT_TYPES = ['PRD', 'BRD'] as const
+type DocumentType = (typeof DOCUMENT_TYPES)[number]
+const PRD_EMPHASIS_OPTIONS = ['KPIs & Metrics', 'Risk Analysis', 'Technical Scope', 'User Stories', 'Requirements', 'Timeline', 'Market Analysis']
+const BRD_EMPHASIS_OPTIONS = ['KPIs & Success Metrics', 'Risk & Assumptions', 'Functional Requirements', 'Non-Functional Requirements', 'Stakeholder Analysis', 'User Personas & Journey', 'Timeline & Dependencies', 'Scope Definition']
 
 type ScreenType = 'dashboard' | 'library' | 'generate' | 'history'
 
@@ -90,6 +93,7 @@ interface ArtifactFileItem {
 
 interface GeneratedPRD {
   id: string
+  documentType: DocumentType
   prdTitle: string
   industry: string
   productType: string
@@ -1032,10 +1036,12 @@ function GenerateScreen({
   setSessionId: React.Dispatch<React.SetStateAction<string | null>>
   agentActivity: ReturnType<typeof useLyzrAgentEvents>
 }) {
+  const [documentType, setDocumentType] = useState<DocumentType>('PRD')
   const [industry, setIndustry] = useState('')
   const [productType, setProductType] = useState('B2B')
   const [detailLevel, setDetailLevel] = useState('Standard')
   const [emphasis, setEmphasis] = useState<string[]>([])
+  const emphasisOptions = documentType === 'BRD' ? BRD_EMPHASIS_OPTIONS : PRD_EMPHASIS_OPTIONS
   const [productName, setProductName] = useState('')
   const [problemStatement, setProblemStatement] = useState('')
   const [generating, setGenerating] = useState(false)
@@ -1059,11 +1065,37 @@ function GenerateScreen({
 
     setGenerating(true)
     setGenerateError(null)
-    setStatusMsg({ text: 'Generating your PRD...', type: 'info' })
+    setStatusMsg({ text: `Generating your ${documentType}...`, type: 'info' })
     setActiveAgentId(PRD_GENERATION_AGENT_ID)
     agentActivity.setProcessing(true)
 
-    const prompt = `Generate a ${detailLevel} PRD for a ${productType} product in the ${industry} industry.
+    const prompt = documentType === 'BRD'
+      ? `Generate a ${detailLevel} Business Requirements Document (BRD) for a ${productType} product in the ${industry} industry.
+Product Name: ${productName}
+Problem Statement: ${problemStatement || 'Not specified'}
+Emphasize these sections: ${emphasis.length > 0 ? emphasis.join(', ') : 'Standard coverage'}
+
+IMPORTANT: Output the BRD as a clean, professional, human-readable document in Markdown format.
+Do NOT output JSON. Do NOT use code blocks for the document content. Do NOT return structured key-value pairs.
+
+Use the following structure with proper section headings, numbered sections, sub-sections, bullet points, and tables:
+
+1. Executive Summary
+2. Business Objectives (numbered list with measurable goals)
+3. Scope
+   - In Scope (bullet points)
+   - Out of Scope (bullet points)
+4. Functional Requirements (table with columns: ID, Requirement, Priority, Acceptance Criteria)
+5. Non-Functional Requirements (table with columns: ID, Requirement, Category, Target)
+6. Stakeholders (table with columns: Name/Role, Responsibility, Interest Level)
+7. User Personas & Journey
+8. Success Metrics / KPIs (table with columns: KPI, Target, Measurement Frequency)
+9. Risks & Assumptions
+   - Risks (table with columns: Risk, Likelihood, Impact, Mitigation)
+   - Assumptions (bullet points)
+10. Dependencies
+11. Timeline & Milestones`
+      : `Generate a ${detailLevel} PRD for a ${productType} product in the ${industry} industry.
 Product Name: ${productName}
 Problem Statement: ${problemStatement || 'Not specified'}
 Emphasize these sections: ${emphasis.length > 0 ? emphasis.join(', ') : 'Standard coverage'}
@@ -1087,7 +1119,8 @@ Output the PRD in well-structured Markdown format with clear section headings.`
           // Structured JSON response — map schema fields
           const newPRD: GeneratedPRD = {
             id: Date.now().toString(),
-            prdTitle: parsed.prd_title || productName || 'Untitled PRD',
+            documentType,
+            prdTitle: parsed.prd_title || productName || `Untitled ${documentType}`,
             industry: parsed.industry || industry,
             productType: parsed.product_type || productType,
             detailLevel: parsed.detail_level || detailLevel,
@@ -1200,8 +1233,8 @@ Output the PRD in well-structured Markdown format with clear section headings.`
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-light font-serif tracking-wider mb-1">Generate PRD</h1>
-        <p className="text-sm text-muted-foreground tracking-wide font-light">Configure and generate a new product requirements document</p>
+        <h1 className="text-2xl font-light font-serif tracking-wider mb-1">Generate {documentType}</h1>
+        <p className="text-sm text-muted-foreground tracking-wide font-light">Configure and generate a new {documentType === 'BRD' ? 'business requirements document' : 'product requirements document'}</p>
       </div>
 
       {statusMsg && <StatusMessage message={statusMsg.text} type={statusMsg.type} onDismiss={() => setStatusMsg(null)} />}
@@ -1213,6 +1246,15 @@ Output the PRD in well-structured Markdown format with clear section headings.`
             <CardTitle className="text-sm tracking-widest uppercase font-light text-muted-foreground">Configuration</CardTitle>
           </CardHeader>
           <CardContent className="space-y-5">
+            <div>
+              <Label className="text-xs tracking-widest uppercase text-muted-foreground font-light mb-2 block">Document Type</Label>
+              <ToggleGroup type="single" value={documentType} onValueChange={val => { if (val) { setDocumentType(val as DocumentType); setEmphasis([]) } }} className="justify-start">
+                {DOCUMENT_TYPES.map(dt => (
+                  <ToggleGroupItem key={dt} value={dt} className="text-xs tracking-wider font-light px-4">{dt === 'PRD' ? 'Product Requirements' : 'Business Requirements'}</ToggleGroupItem>
+                ))}
+              </ToggleGroup>
+            </div>
+
             <div>
               <Label className="text-xs tracking-widest uppercase text-muted-foreground font-light mb-2 block">Product Name *</Label>
               <Input placeholder="e.g., Smart Inventory Hub" value={productName} onChange={e => setProductName(e.target.value)} className="font-light tracking-wide" />
@@ -1254,9 +1296,9 @@ Output the PRD in well-structured Markdown format with clear section headings.`
             </div>
 
             <div>
-              <Label className="text-xs tracking-widest uppercase text-muted-foreground font-light mb-3 block">Section Emphasis</Label>
+              <Label className="text-xs tracking-widest uppercase text-muted-foreground font-light mb-3 block">{documentType} Section Emphasis</Label>
               <div className="grid grid-cols-2 gap-2">
-                {EMPHASIS_OPTIONS.map(opt => (
+                {emphasisOptions.map(opt => (
                   <label key={opt} className="flex items-center gap-2 cursor-pointer py-1.5">
                     <Checkbox checked={emphasis.includes(opt)} onCheckedChange={() => toggleEmphasis(opt)} />
                     <span className="text-xs tracking-wide font-light">{opt}</span>
@@ -1276,7 +1318,7 @@ Output the PRD in well-structured Markdown format with clear section headings.`
               ) : (
                 <span className="flex items-center gap-2">
                   <HiOutlineSparkles className="w-4 h-4" />
-                  Generate PRD
+                  Generate {documentType}
                 </span>
               )}
             </Button>
@@ -1376,9 +1418,9 @@ Output the PRD in well-structured Markdown format with clear section headings.`
             <Card className="border border-border shadow-sm">
               <CardContent className="p-16 text-center">
                 <HiOutlineDocumentText className="w-12 h-12 mx-auto text-muted-foreground/30 mb-4" />
-                <h3 className="text-base font-serif tracking-wider font-medium mb-2">PRD Preview</h3>
+                <h3 className="text-base font-serif tracking-wider font-medium mb-2">{documentType} Preview</h3>
                 <p className="text-sm text-muted-foreground font-light tracking-wide leading-relaxed max-w-sm mx-auto">
-                  Configure your PRD parameters on the left and click Generate to create a new product requirements document powered by your knowledge base.
+                  Configure your {documentType === 'BRD' ? 'BRD' : 'PRD'} parameters on the left and click Generate to create a new {documentType === 'BRD' ? 'business requirements document' : 'product requirements document'} powered by your knowledge base.
                 </p>
               </CardContent>
             </Card>
