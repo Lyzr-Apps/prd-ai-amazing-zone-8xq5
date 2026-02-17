@@ -82,7 +82,16 @@ export async function getDocuments(ragId: string): Promise<GetDocumentsResponse>
       body: JSON.stringify({ ragId }),
     })
 
-    const data = await response.json()
+    const rawText = await response.text()
+    let data
+    try {
+      data = JSON.parse(rawText)
+    } catch {
+      return {
+        success: false,
+        error: `Server returned non-JSON response (status ${response.status}). Please try again.`,
+      }
+    }
     return data
   } catch (error) {
     return {
@@ -114,7 +123,16 @@ export async function uploadAndTrainDocument(ragId: string, file: File): Promise
       body: formData,
     })
 
-    const data = await response.json()
+    const rawText = await response.text()
+    let data
+    try {
+      data = JSON.parse(rawText)
+    } catch {
+      return {
+        success: false,
+        error: `Server returned non-JSON response (status ${response.status}). Please try again.`,
+      }
+    }
     return data
   } catch (error) {
     return {
@@ -140,7 +158,16 @@ export async function deleteDocuments(
       body: JSON.stringify({ ragId, documentNames }),
     })
 
-    const data = await response.json()
+    const rawText = await response.text()
+    let data
+    try {
+      data = JSON.parse(rawText)
+    } catch {
+      return {
+        success: false,
+        error: `Server returned non-JSON response (status ${response.status}). Please try again.`,
+      }
+    }
     return data
   } catch (error) {
     return {
@@ -163,7 +190,16 @@ export async function crawlWebsite(ragId: string, url: string): Promise<CrawlRes
       body: JSON.stringify({ ragId, url }),
     })
 
-    const data = await response.json()
+    const rawText = await response.text()
+    let data
+    try {
+      data = JSON.parse(rawText)
+    } catch {
+      return {
+        success: false,
+        error: `Server returned non-JSON response (status ${response.status}). Please try again.`,
+      }
+    }
     return data
   } catch (error) {
     return {

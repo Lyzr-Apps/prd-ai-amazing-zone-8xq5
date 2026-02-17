@@ -80,7 +80,19 @@ export async function POST(request: NextRequest) {
       );
 
       if (response.ok) {
-        const data = await response.json();
+        const rawText = await response.text();
+        let data: any;
+        try {
+          data = JSON.parse(rawText);
+        } catch {
+          return NextResponse.json(
+            {
+              success: false,
+              error: `Upstream API returned non-JSON response (status ${response.status})`,
+            },
+            { status: 502 }
+          );
+        }
         // Response is array of file paths like ["storage/voicestream-dev-guide.pdf"]
         const filePaths = Array.isArray(data)
           ? data
@@ -183,7 +195,19 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const trainData = await trainResponse.json();
+      const trainRawText = await trainResponse.text();
+      let trainData: any;
+      try {
+        trainData = JSON.parse(trainRawText);
+      } catch {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Upstream API returned non-JSON response during training (status ${trainResponse.status})`,
+          },
+          { status: 502 }
+        );
+      }
 
       return NextResponse.json({
         success: true,

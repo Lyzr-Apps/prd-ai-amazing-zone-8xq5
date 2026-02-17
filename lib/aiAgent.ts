@@ -97,13 +97,28 @@ export async function callAIAgent(
       }),
     })
 
-    const data = await response.json()
+    const rawText = await response.text()
+    let data
+    try {
+      data = JSON.parse(rawText)
+    } catch {
+      // Server returned non-JSON (likely HTML error page)
+      return {
+        success: false,
+        response: {
+          status: 'error' as const,
+          result: {},
+          message: `Server returned non-JSON response (status ${response.status}). Please try again.`,
+        },
+        error: `Server returned non-JSON response (status ${response.status})`,
+      }
+    }
     return data
   } catch (error) {
     return {
       success: false,
       response: {
-        status: 'error',
+        status: 'error' as const,
         result: {},
         message: error instanceof Error ? error.message : 'Network error',
       },
@@ -143,7 +158,23 @@ export async function uploadFiles(files: File | File[]): Promise<UploadResponse>
       body: formData,
     })
 
-    const data = await response.json()
+    const rawText = await response.text()
+    let data
+    try {
+      data = JSON.parse(rawText)
+    } catch {
+      return {
+        success: false,
+        asset_ids: [],
+        files: [],
+        total_files: fileArray.length,
+        successful_uploads: 0,
+        failed_uploads: fileArray.length,
+        message: `Server returned non-JSON response (status ${response.status})`,
+        timestamp: new Date().toISOString(),
+        error: `Server returned non-JSON response (status ${response.status})`,
+      }
+    }
     return data
   } catch (error) {
     return {
