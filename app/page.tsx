@@ -194,6 +194,80 @@ const SAMPLE_ACTIVITY: ActivityItem[] = [
   { type: 'upload', title: 'Patient Portal - Lean PRD', timestamp: '2026-02-13T09:00:00Z' },
 ]
 
+// ─── Agent Response Extraction ───
+// Robustly extract structured data from any agent response shape.
+// Handles: direct JSON objects, stringified JSON, nested wrappers,
+// plain text/markdown fallbacks, and parseLLMJson failure objects.
+function extractAgentData(result: any): Record<string, any> | null {
+  // 1. Try the standard path: result.response.result (object with schema fields)
+  const responseResult = result?.response?.result
+  if (responseResult && typeof responseResult === 'object' && !Array.isArray(responseResult)) {
+    // Check if this looks like actual schema data (has known keys, not a wrapper)
+    const keys = Object.keys(responseResult)
+    const hasSchemaKeys = keys.some(k =>
+      ['prd_title', 'prd_markdown', 'document_title', 'sections_extracted',
+       'content_summary', 'suggested_tags', 'kpi_frameworks', 'formatting_patterns',
+       'industry', 'product_type', 'detail_level', 'sections', 'metadata'].includes(k)
+    )
+    if (hasSchemaKeys) return responseResult
+  }
+
+  // 2. If result.response.result is a string, try parsing it
+  if (typeof responseResult === 'string' && responseResult.trim().length > 0) {
+    const parsed = parseLLMJson(responseResult)
+    if (parsed && typeof parsed === 'object' && !parsed.error) return parsed
+  }
+
+  // 3. Try parseLLMJson on the full response object
+  const fromResponse = parseLLMJson(result?.response?.result || result?.response)
+  if (fromResponse && typeof fromResponse === 'object' && !fromResponse.error) {
+    // Verify it's not just the failure sentinel
+    if (!('success' in fromResponse && fromResponse.success === false && fromResponse.data === null)) {
+      return fromResponse
+    }
+  }
+
+  // 4. Try raw_response if available
+  if (typeof result?.raw_response === 'string') {
+    const fromRaw = parseLLMJson(result.raw_response)
+    if (fromRaw && typeof fromRaw === 'object' && !fromRaw.error) {
+      if (!('success' in fromRaw && fromRaw.success === false && fromRaw.data === null)) {
+        return fromRaw
+      }
+    }
+  }
+
+  // 5. Try result.response.message as potential JSON
+  if (typeof result?.response?.message === 'string' && result.response.message.trim().length > 0) {
+    const fromMsg = parseLLMJson(result.response.message)
+    if (fromMsg && typeof fromMsg === 'object' && !fromMsg.error) {
+      if (!('success' in fromMsg && fromMsg.success === false && fromMsg.data === null)) {
+        return fromMsg
+      }
+    }
+  }
+
+  return null
+}
+
+// Extract plain text content from agent response for markdown fallback
+function extractAgentText(result: any): string {
+  const resp = result?.response
+  if (!resp) return ''
+  // result field might be a string of markdown
+  if (typeof resp.result === 'string') return resp.result
+  // message field
+  if (typeof resp.message === 'string') return resp.message
+  // text field inside result
+  if (typeof resp.result?.text === 'string') return resp.result.text
+  if (typeof resp.result?.message === 'string') return resp.result.message
+  if (typeof resp.result?.content === 'string') return resp.result.content
+  if (typeof resp.result?.prd_markdown === 'string') return resp.result.prd_markdown
+  // raw_response
+  if (typeof result?.raw_response === 'string') return result.raw_response
+  return ''
+}
+
 // ─── Markdown Renderer ───
 function convertMarkdownToHtml(md: string): string {
   if (!md) return ''
@@ -507,7 +581,7 @@ function LibraryScreen({
       agentActivity.setProcessing(false)
 
       if (agentResult.success) {
-        const parsed = parseLLMJson(agentResult.response?.result || agentResult.response)
+        const parsed = extractAgentData(agentResult)
 
         const newDoc: UploadedDoc = {
           id: Date.now().toString(),
@@ -517,7 +591,7 @@ function LibraryScreen({
           suggestedTags: parsed?.suggested_tags || { industry: '', product_type: '', complexity: '', structural_type: '' },
           kpiFrameworks: Array.isArray(parsed?.kpi_frameworks) ? parsed.kpi_frameworks : [],
           formattingPatterns: parsed?.formatting_patterns || { tone: '', style: '' },
-          contentSummary: parsed?.content_summary || '',
+          contentSummary: parsed?.content_summary || extractAgentText(agentResult).slice(0, 500) || '',
           uploadedAt: new Date().toISOString(),
           starred: false,
           customTags: [],
@@ -869,21 +943,60 @@ Output the PRD in well-structured Markdown format with clear section headings.`
       agentActivity.setProcessing(false)
 
       if (result.success) {
-        const parsed = parseLLMJson(result.response?.result || result.response)
+        // Try structured JSON extraction first, then fall back to text/markdown
+        const parsed = extractAgentData(result)
+        const fallbackText = extractAgentText(result)
 
-        if (parsed && !parsed.error) {
+        if (parsed && (parsed.prd_title || parsed.prd_markdown || parsed.sections)) {
+          // Structured JSON response — map schema fields
           const newPRD: GeneratedPRD = {
             id: Date.now().toString(),
-            prdTitle: parsed?.prd_title || productName || 'Untitled PRD',
-            industry: parsed?.industry || industry,
-            productType: parsed?.product_type || productType,
-            detailLevel: parsed?.detail_level || detailLevel,
-            prdMarkdown: parsed?.prd_markdown || '',
-            sections: Array.isArray(parsed?.sections) ? parsed.sections : [],
+            prdTitle: parsed.prd_title || productName || 'Untitled PRD',
+            industry: parsed.industry || industry,
+            productType: parsed.product_type || productType,
+            detailLevel: parsed.detail_level || detailLevel,
+            prdMarkdown: parsed.prd_markdown || '',
+            sections: Array.isArray(parsed.sections) ? parsed.sections : [],
             metadata: {
-              word_count: parsed?.metadata?.word_count ?? 0,
-              emphasis_areas: Array.isArray(parsed?.metadata?.emphasis_areas) ? parsed.metadata.emphasis_areas : [],
-              reference_documents_used: parsed?.metadata?.reference_documents_used ?? 0,
+              word_count: parsed.metadata?.word_count ?? 0,
+              emphasis_areas: Array.isArray(parsed.metadata?.emphasis_areas) ? parsed.metadata.emphasis_areas : [],
+              reference_documents_used: parsed.metadata?.reference_documents_used ?? 0,
+            },
+            artifacts: Array.isArray(result.module_outputs?.artifact_files) ? result.module_outputs.artifact_files : [],
+            createdAt: new Date().toISOString(),
+          }
+
+          setCurrentPRD(newPRD)
+          setGeneratedPRDs(prev => [newPRD, ...prev])
+          setRecentActivity(prev => [{ type: 'generation', title: newPRD.prdTitle, timestamp: newPRD.createdAt }, ...prev])
+          setStatusMsg({ text: `"${newPRD.prdTitle}" generated successfully`, type: 'success' })
+          setTimeout(() => setStatusMsg(null), 4000)
+        } else if (fallbackText.trim().length > 50) {
+          // Agent returned plain text or markdown — use it directly as the PRD content
+          const titleMatch = fallbackText.match(/^#\s+(.+)$/m)
+          const inferredTitle = titleMatch ? titleMatch[1].trim() : productName || 'Untitled PRD'
+
+          // Extract section headings from markdown
+          const headingMatches = [...fallbackText.matchAll(/^##\s+(.+)$/gm)]
+          const inferredSections: PRDSection[] = headingMatches.map(m => ({
+            title: m[1].trim(),
+            anchor: m[1].trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+          }))
+
+          const wordCount = fallbackText.split(/\s+/).filter(Boolean).length
+
+          const newPRD: GeneratedPRD = {
+            id: Date.now().toString(),
+            prdTitle: inferredTitle,
+            industry: industry,
+            productType: productType,
+            detailLevel: detailLevel,
+            prdMarkdown: fallbackText,
+            sections: inferredSections,
+            metadata: {
+              word_count: wordCount,
+              emphasis_areas: emphasis.length > 0 ? emphasis : [],
+              reference_documents_used: 0,
             },
             artifacts: Array.isArray(result.module_outputs?.artifact_files) ? result.module_outputs.artifact_files : [],
             createdAt: new Date().toISOString(),
