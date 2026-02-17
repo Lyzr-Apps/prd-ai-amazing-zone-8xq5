@@ -1,0 +1,21 @@
+{
+  "agents": {
+    "document_ingestion_agent": {
+      "agent_id": "699411cf23d48807fdee5100",
+      "name": "Document Ingestion Agent",
+      "has_knowledge_base": true,
+      "rag_id": "699411ac7049059138dd0e1f"
+    },
+    "prd_generation_agent": {
+      "agent_id": "699411f09e6ec929d6775951",
+      "name": "PRD Generation Agent",
+      "has_knowledge_base": true,
+      "has_file_output": true,
+      "rag_id": "699411ac7049059138dd0e1f"
+    }
+  },
+  "knowledge_base": {
+    "rag_id": "699411ac7049059138dd0e1f",
+    "name": "prd_documents_kb"
+  }
+}

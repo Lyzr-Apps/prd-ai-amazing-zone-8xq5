@@ -1,0 +1,56 @@
+{
+  "agent_name": "Document Ingestion Agent",
+  "agent_id": "699411cf23d48807fdee5100",
+  "description": "Analyzes uploaded PRD documents, extracts structural patterns (section hierarchy, KPI frameworks, tone, formatting style), generates metadata tag suggestions (industry, complexity, structural type) for user confirmation, and prepares chunked content for knowledge base indexing",
+  "agent_type": "json",
+  "accessor": "result",
+  "auto_generated": true,
+  "response_schema": {
+    "document_title": "string",
+    "sections_extracted": [
+      {
+        "heading": "string",
+        "level": "number",
+        "summary": "string"
+      }
+    ],
+    "suggested_tags": {
+      "industry": "string",
+      "product_type": "string",
+      "complexity": "string",
+      "structural_type": "string"
+    },
+    "kpi_frameworks": [
+      "string"
+    ],
+    "formatting_patterns": {
+      "tone": "string",
+      "style": "string"
+    },
+    "content_summary": "string"
+  },
+  "example_response": {
+    "document_title": "sample string",
+    "sections_extracted": [
+      {
+        "heading": "sample string",
+        "level": 0,
+        "summary": "sample string"
+      }
+    ],
+    "suggested_tags": {
+      "industry": "sample string",
+      "product_type": "sample string",
+      "complexity": "sample string",
+      "structural_type": "sample string"
+    },
+    "kpi_frameworks": [
+      "sample string"
+    ],
+    "formatting_patterns": {
+      "tone": "sample string",
+      "style": "sample string"
+    },
+    "content_summary": "sample string"
+  }
+}

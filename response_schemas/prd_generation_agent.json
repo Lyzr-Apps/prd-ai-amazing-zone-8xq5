@@ -1,0 +1,19 @@
+{
+  "agent_name": "PRD Generation Agent",
+  "agent_id": "699411f09e6ec929d6775951",
+  "agent_type": "json",
+  "accessor": "json",
+  "has_module_outputs": true,
+  "has_knowledge_base": true,
+  "has_file_output": true,
+  "rag_id": "699411ac7049059138dd0e1f",
+  "schema": {
+    "prd_title": "string",
+    "industry": "string",
+    "product_type": "string",
+    "detail_level": "string",
+    "prd_markdown": "string",
+    "sections": [{"title": "string", "anchor": "string"}],
+    "metadata": {"word_count": "number", "emphasis_areas": ["string"], "reference_documents_used": "number"}
+  }
+}

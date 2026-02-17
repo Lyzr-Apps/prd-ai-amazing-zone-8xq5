@@ -1,0 +1,56 @@
+{
+  "agent_name": "PRD Generation Agent",
+  "agent_id": "699411f09e6ec929d6775951",
+  "description": "Retrieves top relevant PRD chunks from knowledge base using semantic similarity, synthesizes a new PRD grounded in retrieved patterns and structures, adapts tone/format based on user parameters (industry, length, emphasis), and outputs structured Markdown",
+  "agent_type": "json",
+  "accessor": "result",
+  "auto_generated": true,
+  "response_schema": {
+    "prd_title": "string",
+    "industry": "string",
+    "product_type": "string",
+    "detail_level": "string",
+    "prd_markdown": "string",
+    "sections": [
+      {
+        "title": "string",
+        "anchor": "string"
+      }
+    ],
+    "metadata": {
+      "word_count": "number",
+      "emphasis_areas": [
+        "string"
+      ],
+      "reference_documents_used": "number"
+    }
+  },
+  "example_response": {
+    "prd_title": "sample string",
+    "industry": "sample string",
+    "product_type": "sample string",
+    "detail_level": "sample string",
+    "prd_markdown": "sample string",
+    "sections": [
+      {
+        "title": "sample string",
+        "anchor": "sample string"
+      }
+    ],
+    "metadata": {
+      "word_count": 0,
+      "emphasis_areas": [
+        "sample string"
+      ],
+      "reference_documents_used": 0
+    }
+  },
+  "has_module_outputs": true,
+  "module_outputs_example": {
+    "artifact_files": [
+      {
+        "file_url": "https://example.com/file.pdf"
+      }
+    ]
+  }
+}

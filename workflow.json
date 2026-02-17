@@ -1,0 +1,13 @@
+{
+  "nodes": [
+    {"id": "input_node", "type": "Input", "label": "User Input", "nodeCategory": "input"},
+    {"id": "doc_ingestion_agent", "type": "Agent", "label": "Document Ingestion Agent", "nodeCategory": "agent"},
+    {"id": "prd_generation_agent", "type": "Agent", "label": "PRD Generation Agent", "nodeCategory": "agent"},
+    {"id": "output_node", "type": "Output", "label": "Output", "nodeCategory": "end"}
+  ],
+  "edges": [
+    {"source": "input_node", "target": "doc_ingestion_agent"},
+    {"source": "doc_ingestion_agent", "target": "prd_generation_agent"},
+    {"source": "prd_generation_agent", "target": "output_node"}
+  ]
+}
