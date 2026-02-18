@@ -171,6 +171,7 @@ const SAMPLE_DOCS: UploadedDoc[] = [
 const SAMPLE_PRDS: GeneratedPRD[] = [
   {
     id: 'gen-1',
+    documentType: 'PRD',
     prdTitle: 'AI-Powered Inventory Management System',
     industry: 'Retail',
     productType: 'B2B',
@@ -309,7 +310,7 @@ function downloadPDF(prd: GeneratedPRD): boolean {
   if (!markdownContent || markdownContent.trim().length === 0) return false
 
   const htmlBody = convertMarkdownToHtml(markdownContent)
-  const title = prd.prdTitle || 'PRD Document'
+  const title = prd.prdTitle || `${prd.documentType || 'PRD'} Document`
 
   const metaLine = [
     prd.industry && `Industry: ${prd.industry}`,
@@ -573,13 +574,13 @@ function DashboardScreen({
     <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-light font-serif tracking-wider mb-1">Dashboard</h1>
-        <p className="text-sm text-muted-foreground tracking-wide font-light">Overview of your PRD workspace</p>
+        <p className="text-sm text-muted-foreground tracking-wide font-light">Overview of your document workspace</p>
       </div>
 
       {/* Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <MetricCard icon={<FiFileText className="w-5 h-5" />} label="Uploaded PRDs" value={uploadedDocs.length} sublabel="In knowledge base" />
-        <MetricCard icon={<HiOutlineSparkles className="w-5 h-5" />} label="Generated PRDs" value={generatedPRDs.length} sublabel="AI-generated documents" />
+        <MetricCard icon={<FiFileText className="w-5 h-5" />} label="Uploaded Documents" value={uploadedDocs.length} sublabel="In knowledge base" />
+        <MetricCard icon={<HiOutlineSparkles className="w-5 h-5" />} label="Generated Documents" value={generatedPRDs.length} sublabel="AI-generated PRDs & BRDs" />
         <MetricCard icon={<HiOutlineChartBar className="w-5 h-5" />} label="Avg. Relevance" value={generatedPRDs.length > 0 ? `${Math.round(generatedPRDs.reduce((acc, p) => acc + (p.metadata?.reference_documents_used ?? 0), 0) / generatedPRDs.length)}` : '---'} sublabel="Ref. documents used" />
       </div>
 
@@ -591,7 +592,7 @@ function DashboardScreen({
               <FiUpload className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="text-base font-serif tracking-wider font-medium mb-1">Upload New PRD</h3>
+              <h3 className="text-base font-serif tracking-wider font-medium mb-1">Upload Document</h3>
               <p className="text-sm text-muted-foreground font-light tracking-wide">Add reference documents to your knowledge base</p>
             </div>
             <FiChevronRight className="w-5 h-5 text-muted-foreground ml-auto group-hover:text-foreground transition-colors" />
@@ -604,8 +605,8 @@ function DashboardScreen({
               <HiOutlineSparkles className="w-6 h-6" />
             </div>
             <div>
-              <h3 className="text-base font-serif tracking-wider font-medium mb-1">Generate PRD</h3>
-              <p className="text-sm text-muted-foreground font-light tracking-wide">Create a new PRD with AI assistance</p>
+              <h3 className="text-base font-serif tracking-wider font-medium mb-1">Generate Document</h3>
+              <p className="text-sm text-muted-foreground font-light tracking-wide">Create a new PRD or BRD with AI assistance</p>
             </div>
             <FiChevronRight className="w-5 h-5 text-muted-foreground ml-auto group-hover:text-foreground transition-colors" />
           </CardContent>
@@ -619,7 +620,7 @@ function DashboardScreen({
         </CardHeader>
         <CardContent>
           {recentActivity.length === 0 ? (
-            <p className="text-sm text-muted-foreground font-light tracking-wide py-4 text-center">No recent activity. Upload a PRD or generate one to get started.</p>
+            <p className="text-sm text-muted-foreground font-light tracking-wide py-4 text-center">No recent activity. Upload a document or generate one to get started.</p>
           ) : (
             <div className="space-y-0">
               {recentActivity.slice(0, 8).map((item, i) => (
@@ -803,8 +804,8 @@ function LibraryScreen({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-light font-serif tracking-wider mb-1">PRD Library</h1>
-        <p className="text-sm text-muted-foreground tracking-wide font-light">Upload and manage reference PRD documents</p>
+        <h1 className="text-2xl font-light font-serif tracking-wider mb-1">Document Library</h1>
+        <p className="text-sm text-muted-foreground tracking-wide font-light">Upload and manage reference documents</p>
       </div>
 
       {statusMsg && <StatusMessage message={statusMsg.text} type={statusMsg.type} onDismiss={() => setStatusMsg(null)} />}
@@ -1141,9 +1142,9 @@ Output the PRD in well-structured Markdown format with clear section headings.`
           setStatusMsg({ text: `"${newPRD.prdTitle}" generated successfully`, type: 'success' })
           setTimeout(() => setStatusMsg(null), 4000)
         } else if (fallbackText.trim().length > 50) {
-          // Agent returned plain text or markdown — use it directly as the PRD content
+          // Agent returned plain text or markdown — use it directly as the document content
           const titleMatch = fallbackText.match(/^#\s+(.+)$/m)
-          const inferredTitle = titleMatch ? titleMatch[1].trim() : productName || 'Untitled PRD'
+          const inferredTitle = titleMatch ? titleMatch[1].trim() : productName || `Untitled ${documentType}`
 
           // Extract section headings from markdown
           const headingMatches = [...fallbackText.matchAll(/^##\s+(.+)$/gm)]
@@ -1156,6 +1157,7 @@ Output the PRD in well-structured Markdown format with clear section headings.`
 
           const newPRD: GeneratedPRD = {
             id: Date.now().toString(),
+            documentType,
             prdTitle: inferredTitle,
             industry: industry,
             productType: productType,
@@ -1177,11 +1179,11 @@ Output the PRD in well-structured Markdown format with clear section headings.`
           setStatusMsg({ text: `"${newPRD.prdTitle}" generated successfully`, type: 'success' })
           setTimeout(() => setStatusMsg(null), 4000)
         } else {
-          setGenerateError('Failed to parse PRD response. Please try again.')
-          setStatusMsg({ text: 'Failed to parse PRD response', type: 'error' })
+          setGenerateError(`Failed to parse ${documentType} response. Please try again.`)
+          setStatusMsg({ text: `Failed to parse ${documentType} response`, type: 'error' })
         }
       } else {
-        setGenerateError(result.error || 'Failed to generate PRD')
+        setGenerateError(result.error || `Failed to generate ${documentType}`)
         setStatusMsg({ text: result.error || 'Generation failed', type: 'error' })
       }
     } catch (err) {
@@ -1196,12 +1198,12 @@ Output the PRD in well-structured Markdown format with clear section headings.`
 
   const downloadMarkdown = () => {
     if (!currentPRD) {
-      setStatusMsg({ text: 'No PRD available to download.', type: 'error' })
+      setStatusMsg({ text: `No ${documentType} available to download.`, type: 'error' })
       return
     }
     const content = getDownloadableMarkdown(currentPRD)
     if (!content || content.trim().length === 0) {
-      setStatusMsg({ text: 'PRD content is empty. Try generating again.', type: 'error' })
+      setStatusMsg({ text: `${documentType} content is empty. Try generating again.`, type: 'error' })
       return
     }
     try {
@@ -1221,12 +1223,12 @@ Output the PRD in well-structured Markdown format with clear section headings.`
 
   const handleDownloadPDF = () => {
     if (!currentPRD) {
-      setStatusMsg({ text: 'No PRD available to download.', type: 'error' })
+      setStatusMsg({ text: `No ${documentType} available to download.`, type: 'error' })
       return
     }
     const success = downloadPDF(currentPRD)
     if (!success) {
-      setStatusMsg({ text: 'PRD content is empty. Try generating again.', type: 'error' })
+      setStatusMsg({ text: `${documentType} content is empty. Try generating again.`, type: 'error' })
     }
   }
 
@@ -1345,7 +1347,7 @@ Output the PRD in well-structured Markdown format with clear section headings.`
             </Card>
           ) : currentPRD ? (
             <>
-              {/* PRD Header & Actions */}
+              {/* Document Header & Actions */}
               <Card className="border border-border shadow-sm">
                 <CardContent className="p-5">
                   <div className="flex items-start justify-between mb-3">
@@ -1450,7 +1452,7 @@ function HistoryScreen({
   const downloadMarkdown = (prd: GeneratedPRD) => {
     const content = getDownloadableMarkdown(prd)
     if (!content || content.trim().length === 0) {
-      setStatusMsg({ text: 'PRD content is empty. Cannot download.', type: 'error' })
+      setStatusMsg({ text: 'Document content is empty. Cannot download.', type: 'error' })
       return
     }
     try {
@@ -1471,7 +1473,7 @@ function HistoryScreen({
   const handleDownloadPDF = (prd: GeneratedPRD) => {
     const success = downloadPDF(prd)
     if (!success) {
-      setStatusMsg({ text: 'PRD content is empty. Cannot download PDF.', type: 'error' })
+      setStatusMsg({ text: 'Document content is empty. Cannot download PDF.', type: 'error' })
     }
   }
 
@@ -1479,7 +1481,7 @@ function HistoryScreen({
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-light font-serif tracking-wider mb-1">Generation History</h1>
-        <p className="text-sm text-muted-foreground tracking-wide font-light">Review and manage previously generated PRDs</p>
+        <p className="text-sm text-muted-foreground tracking-wide font-light">Review and manage previously generated documents</p>
       </div>
 
       {statusMsg && <StatusMessage message={statusMsg.text} type={statusMsg.type} onDismiss={() => setStatusMsg(null)} />}
@@ -1488,9 +1490,9 @@ function HistoryScreen({
         <Card className="border border-border shadow-sm">
           <CardContent className="p-16 text-center">
             <FiClock className="w-10 h-10 mx-auto text-muted-foreground/30 mb-4" />
-            <h3 className="text-base font-serif tracking-wider font-medium mb-2">No PRDs Generated Yet</h3>
+            <h3 className="text-base font-serif tracking-wider font-medium mb-2">No Documents Generated Yet</h3>
             <p className="text-sm text-muted-foreground font-light tracking-wide max-w-sm mx-auto">
-              Once you generate your first PRD, it will appear here for easy reference and export.
+              Once you generate your first PRD or BRD, it will appear here for easy reference and export.
             </p>
           </CardContent>
         </Card>
@@ -1500,7 +1502,7 @@ function HistoryScreen({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-secondary/50">
-                  <th className="text-left px-5 py-3 text-xs tracking-widest uppercase text-muted-foreground font-light">PRD Name</th>
+                  <th className="text-left px-5 py-3 text-xs tracking-widest uppercase text-muted-foreground font-light">Document Name</th>
                   <th className="text-left px-5 py-3 text-xs tracking-widest uppercase text-muted-foreground font-light hidden md:table-cell">Industry</th>
                   <th className="text-left px-5 py-3 text-xs tracking-widest uppercase text-muted-foreground font-light hidden md:table-cell">Detail Level</th>
                   <th className="text-left px-5 py-3 text-xs tracking-widest uppercase text-muted-foreground font-light hidden sm:table-cell">Date</th>
@@ -1511,8 +1513,13 @@ function HistoryScreen({
                 {generatedPRDs.map(prd => (
                   <tr key={prd.id} className="border-b border-border last:border-b-0 hover:bg-secondary/30 transition-colors cursor-pointer" onClick={() => { setViewPRD(prd); setViewOpen(true) }}>
                     <td className="px-5 py-4">
-                      <p className="font-medium font-serif tracking-wide text-sm">{prd.prdTitle}</p>
-                      <p className="text-xs text-muted-foreground tracking-wide mt-0.5">{prd.productType}</p>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-[10px] font-light tracking-wider px-1.5 py-0 flex-shrink-0">{prd.documentType || 'PRD'}</Badge>
+                        <div className="min-w-0">
+                          <p className="font-medium font-serif tracking-wide text-sm truncate">{prd.prdTitle}</p>
+                          <p className="text-xs text-muted-foreground tracking-wide mt-0.5">{prd.productType}</p>
+                        </div>
+                      </div>
                     </td>
                     <td className="px-5 py-4 hidden md:table-cell">
                       <Badge variant="secondary" className="text-xs font-light tracking-wide">{prd.industry}</Badge>
@@ -1547,13 +1554,13 @@ function HistoryScreen({
         </Card>
       )}
 
-      {/* View PRD Dialog */}
+      {/* View Document Dialog */}
       <Dialog open={viewOpen} onOpenChange={setViewOpen}>
         <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="font-serif tracking-wider font-medium">{viewPRD?.prdTitle}</DialogTitle>
             <DialogDescription className="tracking-wide font-light">
-              {viewPRD?.industry} | {viewPRD?.productType} | {viewPRD?.detailLevel}
+              {viewPRD?.documentType || 'PRD'} | {viewPRD?.industry} | {viewPRD?.productType} | {viewPRD?.detailLevel}
               {(viewPRD?.metadata?.word_count ?? 0) > 0 && ` | ${viewPRD?.metadata?.word_count} words`}
             </DialogDescription>
           </DialogHeader>
@@ -1619,8 +1626,8 @@ export default function Page() {
 
   const NAV_ITEMS: { key: ScreenType; label: string; icon: React.ReactNode }[] = [
     { key: 'dashboard', label: 'Dashboard', icon: <FiGrid className="w-4 h-4" /> },
-    { key: 'library', label: 'PRD Library', icon: <FiLayers className="w-4 h-4" /> },
-    { key: 'generate', label: 'Generate PRD', icon: <HiOutlineSparkles className="w-4 h-4" /> },
+    { key: 'library', label: 'Document Library', icon: <FiLayers className="w-4 h-4" /> },
+    { key: 'generate', label: 'Generate', icon: <HiOutlineSparkles className="w-4 h-4" /> },
     { key: 'history', label: 'History', icon: <FiClock className="w-4 h-4" /> },
   ]
 
@@ -1651,7 +1658,7 @@ export default function Page() {
             </div>
             <div className="flex items-center gap-2">
               <div className={cn('w-1.5 h-1.5 rounded-full', activeAgentId === PRD_GENERATION_AGENT_ID ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground/30')} />
-              <span className="text-xs font-light tracking-wide truncate">PRD Generation</span>
+              <span className="text-xs font-light tracking-wide truncate">Document Generation</span>
             </div>
           </div>
 
@@ -1668,7 +1675,7 @@ export default function Page() {
         {/* Top Header */}
         <header className="sticky top-0 z-20 bg-background/90 backdrop-blur-sm border-b border-border px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h2 className="text-sm font-serif tracking-wider font-medium capitalize">{activeScreen === 'generate' ? 'Generate PRD' : activeScreen === 'library' ? 'PRD Library' : activeScreen}</h2>
+            <h2 className="text-sm font-serif tracking-wider font-medium capitalize">{activeScreen === 'generate' ? 'Generate Document' : activeScreen === 'library' ? 'Document Library' : activeScreen}</h2>
           </div>
           <div className="flex items-center gap-3">
             <Label htmlFor="sample-toggle" className="text-xs tracking-wider text-muted-foreground font-light cursor-pointer">Sample Data</Label>
